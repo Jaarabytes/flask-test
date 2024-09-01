@@ -11,7 +11,8 @@ This is a Flask-based API that accepts transaction data, processes it, and secur
 ## Requirements
 
 - Python 3.x
-- Pip
+- Poetry
+- RabittMQ
 
 ### Installation
 
@@ -29,32 +30,25 @@ https://github.com/Jaarabytes/flask-test.git
 cd flask-test
 ```		
 
-- Create a virtual environment (optional but recommended):
-
-
-```
-python -m venv venv
-```		
-
 - Activate the virtual environment:
 
     - Windows:
 
 ```
-        venv\Scripts\activate
+poetry shell
 ```
 
     - Linux/Mac OS:
 
 ```
-        source venv/bin/activate
+poetry shell
 ```
 
 - Install the required packages:
 
 
 ```
-pip install -r requirements.txt
+poetry install
 ```		
 
 - Set up the environment variables:
@@ -69,9 +63,19 @@ Start the Flask development server:
 python app.py
 ```	
 
-The API will be available at http://localhost:5000 (or another port if you've configured it differently)
+Start the celery worker:
 
-Use a tool like Postman or curl to send HTTP requests to the API endpoints
+```
+celery -A celery worker --loglevel=info
+```
+
+Testing the load using locust:
+
+```
+locust -f locustfile.py
+```
+
+Proceed to the web interface and tinker the settings to your liking
 
 ## Tests
 
