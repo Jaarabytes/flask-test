@@ -37,11 +37,15 @@ python -m venv venv
 ```		
 
 - Activate the virtual environment:
-        Windows:
+
+    - Windows:
+
 ```
         venv\Scripts\activate
 ```
-        Linux/Mac OS:
+
+    - Linux/Mac OS:
+
 ```
         source venv/bin/activate
 ```
@@ -53,10 +57,10 @@ python -m venv venv
 pip install -r requirements.txt
 ```		
 
-Set up the environment variables:
-        Copy the contents of .env.example into a new file named .env
-        Update the values in the .env file with your PostgreSQL credentials and other configuration details
-        Make sure that the credentials start with the format ``
+- Set up the environment variables:
+    - Copy the contents of .env.example into a new file named .env
+    - Update the values in the .env file with your PostgreSQL credentials and other configuration details
+    - Make sure that the credentials start with the format `postgresql+pg8000://`
 
 ### Usage
 
@@ -68,6 +72,16 @@ python app.py
 The API will be available at http://localhost:5000 (or another port if you've configured it differently)
 
 Use a tool like Postman or curl to send HTTP requests to the API endpoints
+
+## Tests
+
+Tests are already written. 
+
+To run the tests:
+
+```
+pytest tests.py
+```
 
 ## Contributing
 
