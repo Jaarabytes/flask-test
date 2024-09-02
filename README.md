@@ -13,6 +13,7 @@ This is a Flask-based API that accepts transaction data, processes it, and secur
 - Python 3.x
 - Poetry
 - RabittMQ
+- Redis
 
 ### Installation
 
@@ -54,25 +55,26 @@ poetry install
 - Set up the environment variables:
     - Copy the contents of .env.example into a new file named .env
     - Update the values in the .env file with your PostgreSQL credentials and other configuration details
-    - Make sure that the credentials start with the format `postgresql+pg8000://`
+    - Make sure that the credentials start with the format `postgresql+asyncpg://`
 
 ### Usage
 
 Start the Flask development server:
 ```
-python app.py
+python app/app.py
 ```	
 
-Start the celery worker:
+Start the celery and redis workers:
 
 ```
 celery -A celery worker --loglevel=info
+sudo systemctl start redis && sudo systemctl enable redis
 ```
 
 Testing the load using locust:
 
 ```
-locust -f locustfile.py
+locust -f tests/locustfile.py
 ```
 
 Proceed to the web interface and tinker the settings to your liking
@@ -84,7 +86,7 @@ Tests are already written.
 To run the tests:
 
 ```
-pytest tests.py
+pytest tests/tests.py
 ```
 
 ## Contributing

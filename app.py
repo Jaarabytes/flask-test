@@ -1,28 +1,40 @@
 import os
+from flask import Flask
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+import asyncio
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, String, Float, DateTime
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import QueuePool
+from sqlalchemy import Column, String, Float, DateTime
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from celery.result import AsyncResult
-from celery import Celery
+from celery_tasks import make_celery
 import requests
 import asyncpg
-import os
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+import asyncio
+
 
 load_dotenv()
 
 Base = declarative_base()
 app = Flask(__name__)
-# Celery configuration
-celery = Celery(
-    app.import_name,
-    broker=os.environ.get('BROKER_URL', 'redis://localhost:6379/0'),
-    backend=os.environ.get('RESULT_BACKEND', 'redis://localhost:6379/1')
-)
+
+# Configure Flask app for Celery
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+
+# Initialize Celery
+celery = make_celery(app)
+
+database_uri = os.getenv("DB_URI")
 celery.conf.update(app.config)
+async_engine = create_async_engine(database_uri,pool_size=20,max_overflow=30)
+AsyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=async_engine, class_=AsyncSession)
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -42,20 +54,16 @@ class Processed_Transactions(Base):
     currency = Column(String)
     timestamp = Column(DateTime)
 
+# Function to create tables asynchronously
+async def create_tables():
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 def create_app(config_name='default'):
     app = Flask(__name__)
-
-    database_uri = os.getenv("DB_URI")
-    celery.conf.update(app.config)
-
-    engine = create_engine(database_uri, poolclass=QueuePool, pool_size=20, max_overflow=30)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-    Base.metadata.create_all(bind=engine)
-
+    asyncio.run(create_tables())
     def get_db():
-        db = SessionLocal()
+        db = AsyncSessionLocal()
         try:
             yield db
         finally:
@@ -108,31 +116,6 @@ def create_app(config_name='default'):
         
         return jsonify({"message": "Transaction stored successfully!"}), 201
         
-
-    @app.route('/task_status/<task_id>', methods=['GET'])
-    def task_status(task_id):
-        task = AsyncResult(task_id)
-        
-        if task.state == 'PENDING':
-            response = {
-                'state': task.state,
-                'status': 'Pending...'
-            }
-        elif task.state == 'FAILURE':
-            response = {
-                'state': task.state,
-                'status': str(task.info)
-            }
-        else:
-            response = {
-                'state': task.state,
-                'status': task.info.get('status', ''),
-                'result': task.info.get('result', '')
-            }
-        
-        return jsonify(response)
-    
-
     @celery.task(bind=True)
     async def process_transaction(self, transaction_id, user_id, amount, currency, timestamp):
         converted_amount = convert_currency(amount)
@@ -162,7 +145,28 @@ def create_app(config_name='default'):
         else:
             return None
 
-
+    @app.route('/task_status/<task_id>', methods=['GET'])
+    def task_status(task_id):
+        task = AsyncResult(task_id)
+        
+        if task.state == 'PENDING':
+            response = {
+                'state': task.state,
+                'status': 'Pending...'
+            }
+        elif task.state == 'FAILURE':
+            response = {
+                'state': task.state,
+                'status': str(task.info)
+            }
+        else:
+            response = {
+                'state': task.state,
+                'status': task.info.get('status', ''),
+                'result': task.info.get('result', '')
+            }
+        
+        return jsonify(response)
     return app
 
 if __name__ == '__main__':
