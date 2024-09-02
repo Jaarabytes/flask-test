@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
 COPY . /app
 
